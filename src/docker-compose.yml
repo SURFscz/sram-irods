@@ -1,0 +1,125 @@
+version: '2'
+
+volumes:
+
+  irods_database:
+    driver: local
+  irods_config:
+    driver: local
+  irods_ssl:
+    driver: local
+  ssh_public:
+    driver: local
+
+services:
+  sp:
+    build: sp
+    volumes:
+      - ./etc/pam-websso/websso_daemon.json:/pam-websso/websso_daemon.json
+      - ./etc/pam-websso/websso_daemon.py:/pam-websso/websso_daemon.py
+    ports:
+      - 80:80
+    command:
+      - python
+      - /pam-websso/websso_daemon.py
+
+  db:
+    image: postgres:9.1
+    hostname: $IRODS_DB_HOST
+    volumes:
+      - irods_database:/var/lib/postgresql/data
+      - ./etc/irods/pgs_init.sh:/docker-entrypoint-initdb.d/setup-my-schema.sh:ro
+    environment:
+      MY_DB: $IRODS_DB_NAME
+      MY_USER: $IRODS_DB_USER
+      MY_PASSWORD: $IRODS_DB_PASS
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+
+  mq:
+    image: redis
+    restart: "always"
+
+  irods:
+    build:
+      context: irods
+      dockerfile: Dockerfile
+      args:
+        IRODS_USER: $IRODS_USER
+        IRODS_SERVICE_PORT: $IRODS_SERVICE_PORT
+        IRODS_CONTROL_PORT: $IRODS_CONTROL_PORT
+        IRODS_RANGE_FROM: $IRODS_RANGE_FROM
+        IRODS_RANGE_TILL: $IRODS_RANGE_TILL
+        IRODS_VERSION: $IRODS_VERSION
+    hostname: $IRODS_HOST
+    volumes:
+      - irods_config:/var/lib/irods
+      - irods_ssl:/etc/irods/ssl
+      - ./etc/irods/irods.pam:/etc/pam.d/irods
+      - ./etc/pam-websso/pam_websso.json:/pam-websso/pam_websso.json
+      - ./etc/pam-websso/pam_websso.py:/pam-websso/pam_websso.py
+    depends_on:
+      - sp 
+      - db
+    environment:
+      DATABASE_TYPE: "postgres"
+      IRODS_DB_HOST: $IRODS_DB_HOST
+      IRODS_DB_NAME: $IRODS_DB_NAME
+      IRODS_DB_PORT: $IRODS_DB_PORT
+      IRODS_DB_USER: $IRODS_DB_USER
+      IRODS_DB_PASS: $IRODS_DB_PASS
+      IRODS_SERVICE_PORT: $IRODS_SERVICE_PORT
+      IRODS_CONTROL_PORT: $IRODS_CONTROL_PORT
+      IRODS_RANGE_FROM: $IRODS_RANGE_FROM
+      IRODS_RANGE_TILL: $IRODS_RANGE_TILL
+      IRODS_HOST: $IRODS_HOST
+      IRODS_ZONE: $IRODS_ZONE
+      IRODS_USER: $IRODS_USER
+      IRODS_PASS: $IRODS_PASS
+      IRODS_SERVICE_NAME: $IRODS_SERVICE_NAME
+      IRODS_SERVICE_GROUP: $IRODS_SERVICE_GROUP
+
+  ssh:
+    build: 
+      context: ssh
+      dockerfile: Dockerfile
+      args:
+        IRODS_VERSION: $IRODS_VERSION
+    links:
+      - irods:$IRODS_HOST
+    hostname: shell
+    restart: always
+    ports:
+      - "2020:22"
+    volumes:
+      - irods_ssl:/etc/irods/ssl
+      - ssh_public:/root/.ssh
+
+  sync:
+    build: sync
+    links:
+      - mq
+      - irods:$IRODS_HOST
+      - ssh:shell
+    environment:
+      DOMAIN: $DOMAIN
+      IRODS_HOST: $IRODS_HOST
+      IRODS_PORT: $IRODS_SERVICE_PORT
+      IRODS_ZONE: $IRODS_ZONE
+      IRODS_USER: $IRODS_USER
+      IRODS_PASS: $IRODS_PASS
+      LDAP_HOST: $LDAP_SRAM_HOST
+      LDAP_BASE_DN: $LDAP_SRAM_BASE_DN
+      LDAP_BIND_DN: $LDAP_SRAM_BIND_DN
+      LDAP_PASS: $LDAP_SRAM_PASSWORD
+      LDAP_FILTER: $LDAP_SRAM_FILTER
+      LDAP_USER_KEY: "uid"
+      LDAP_GROUP_KEY: "cn"
+      LOG_LEVEL: "INFO"
+      SYNC_INTERVAL: "300"
+      SYNC_PROGRAM: "/usr/local/bin/sync.py"
+      SYNC_BROKER: "redis://mq:6379/0"
+    volumes:
+      - ./etc/sync/sync.py:/usr/local/bin/sync.py
+      - ssh_public:/ssh
+    restart: "unless-stopped"

@@ -1,0 +1,2 @@
+* * * * * root . /usr/local/etc/env.sh; python /usr/local/bin/sync.py >> /var/log/cron.log 2>&1
+# An empty line is required at the end of this file for a valid cron file.

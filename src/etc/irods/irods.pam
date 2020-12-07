@@ -1,0 +1,1 @@
+auth sufficient pam_python.so /pam-websso/pam_websso.py debug
