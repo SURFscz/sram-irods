@@ -102,7 +102,7 @@ services:
       - irods:$IRODS_HOST
       - ssh:shell
     environment:
-      DOMAIN: $DOMAIN
+      DOMAIN: ${DOMAIN:-localhost"}
       IRODS_HOST: $IRODS_HOST
       IRODS_PORT: $IRODS_SERVICE_PORT
       IRODS_ZONE: $IRODS_ZONE
@@ -113,13 +113,13 @@ services:
       LDAP_BIND_DN: $LDAP_SRAM_BIND_DN
       LDAP_PASS: $LDAP_SRAM_PASSWORD
       LDAP_FILTER: $LDAP_SRAM_FILTER
-      LDAP_USER_KEY: "uid"
-      LDAP_GROUP_KEY: "cn"
+      LDAP_USER_KEY: ${LDAP_USER_KEY:-uid}
+      LDAP_GROUP_KEY: ${LDAP_GROUP_KEY:-cn}
       LOG_LEVEL: "INFO"
-      SYNC_INTERVAL: "300"
-      SYNC_PROGRAM: "/usr/local/bin/sync.py"
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-300}
+      SYNC_PROGRAM: ${SYNC_PROGRAM:-/usr/local/bin/sync.py}
       SYNC_BROKER: "redis://mq:6379/0"
     volumes:
-      - ./etc/sync/sync.py:/usr/local/bin/sync.py
+      - ./etc/sync/sync.py:${SYNC_PROGRAM:-/usr/local/bin/sync.py}
       - ssh_public:/ssh
     restart: "unless-stopped"
