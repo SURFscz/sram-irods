@@ -9,7 +9,7 @@ WORKDIR /opt
 ADD app /opt/app
 
 RUN mkdir /root/.ssh
-RUN ssh-keygen -f /etc/ssh/id_rsa -N '' -t "rsa";
+RUN ssh-keygen -f /root/.ssh/id_rsa -N '' -t "rsa";
 
 #CMD ["celery", "-A", "app", "worker", "--beat", "-l", "info"]
 

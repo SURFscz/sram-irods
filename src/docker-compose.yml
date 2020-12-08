@@ -18,7 +18,7 @@ services:
       - ./etc/pam-websso/websso_daemon.json:/pam-websso/websso_daemon.json
       - ./etc/pam-websso/websso_daemon.py:/pam-websso/websso_daemon.py
     ports:
-      - 80:80
+      - "${WEB_PORT:-80}:80"
     command:
       - python
       - /pam-websso/websso_daemon.py
@@ -90,7 +90,7 @@ services:
     hostname: shell
     restart: always
     ports:
-      - "2020:22"
+      - "${SSH_PORT:-2020}:22"
     volumes:
       - irods_ssl:/etc/irods/ssl
       - ssh_public:/root/.ssh

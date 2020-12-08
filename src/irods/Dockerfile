@@ -56,10 +56,9 @@ RUN yum groupinstall -y 'Development Tools'
 RUN git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive.git
 RUN cd irods_auth_plugin_pam_interactive && /opt/irods-externals/cmake3.5.2-0/bin/cmake -D IRODS_VERSION=${IRODS_VERSION} . && make && make install && ln -s /auth/* /usr/lib/irods/plugins/auth/ && cp pam_handshake_auth_check /usr/sbin
 
-# Install pam-websso
+# Install requirements for pam-websso
 RUN yum install -y python python-devel python-pam python-pip
 RUN pip install pyasn1 pyopenssl cryptography==2.2.2 requests
-ADD pam-websso pam-websso
 
 # Prepare for Sync ldap
 RUN yum -y install openldap-devel
