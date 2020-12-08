@@ -13,12 +13,19 @@ volumes:
 
 services:
   sp:
-    build: sp
+    build:
+      context: sp
+      dockerfile: Dockerfile.python2
     volumes:
-      - ./etc/pam-websso/websso_daemon.json:/pam-websso/websso_daemon.json
       - ./etc/pam-websso/websso_daemon.py:/pam-websso/websso_daemon.py
+    environment:
+      URL: "http://${DOMAIN:-localhost}:${WEB_PORT:-80}"
+      IDP_ENTITYID: "${IDP_ENTITYID:-https://capriza.github.io/samling/samling.html}"
+      IDP_LOGON_URL: "${IDP_LOGON_URL:-https://capriza.github.io/samling/samling.html}"
+      IDP_LOGON_BINDING: "${IDP_LOGON_BINDING:-urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect}"
+      IDP_CERTIFICATE: "${IDP_X509:-MIICpzCCAhACCQDuFX0Db5iljDANBgkqhkiG9w0BAQsFADCBlzELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExEjAQBgNVBAcMCVBhbG8gQWx0bzEQMA4GA1UECgwHU2FtbGluZzEPMA0GA1UECwwGU2FsaW5nMRQwEgYDVQQDDAtjYXByaXphLmNvbTEmMCQGCSqGSIb3DQEJARYXZW5naW5lZXJpbmdAY2Fwcml6YS5jb20wHhcNMTgwNTE1MTgxMTEwWhcNMjgwNTEyMTgxMTEwWjCBlzELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExEjAQBgNVBAcMCVBhbG8gQWx0bzEQMA4GA1UECgwHU2FtbGluZzEPMA0GA1UECwwGU2FsaW5nMRQwEgYDVQQDDAtjYXByaXphLmNvbTEmMCQGCSqGSIb3DQEJARYXZW5naW5lZXJpbmdAY2Fwcml6YS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAJEBNDJKH5nXr0hZKcSNIY1l4HeYLPBEKJLXyAnoFTdgGrvi40YyIx9lHh0LbDVWCgxJp21BmKll0CkgmeKidvGlr3FUwtETro44L+SgmjiJNbftvFxhNkgA26O2GDQuBoQwgSiagVadWXwJKkodH8tx4ojBPYK1pBO8fHf3wOnxAgMBAAEwDQYJKoZIhvcNAQELBQADgYEACIylhvh6T758hcZjAQJiV7rMRg+Omb68iJI4L9f0cyBcJENR+1LQNgUGyFDMm9Wm9o81CuIKBnfpEE2Jfcs76YVWRJy5xJ11GFKJJ5T0NEB7txbUQPoJOeNoE736lF5vYw6YKp8fJqPW0L2PLWe9qTn8hxpdnjo3k6r5gXyl8tk=}"
     ports:
-      - ${WEB_PORT:-80}:8000
+      - ${WEB_PORT:-80}:80
     command:
       - python
       - /pam-websso/websso_daemon.py

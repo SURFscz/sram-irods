@@ -11,6 +11,7 @@ from onelogin.saml2.utils import OneLogin_Saml2_Utils
 from os import path
 from threading import Timer
 import random
+import os
 import json
 
 import logging
@@ -54,8 +55,10 @@ class Client(Resource, object):
             if args:
                 return ClientAuth(auth)
             else:
+                logging.debug("No nonce ...")
                 return ClientError()
         else:
+            logging.debug("No auth ...")
             return ClientError()
 
     def handleCommand(self, nonce, msg):
@@ -77,7 +80,8 @@ class ClientError(Resource, object):
         Resource.__init__(self)
 
     def render(self, request):
-        request.setResponseCode(400, 'Something went wrong!')
+        logging.error("Client Error")
+        request.setResponseCode(400, b'Something went wrong!')
         return "Error"
 
 class ClientAuth(Resource, object):
@@ -113,6 +117,7 @@ class Command(LineReceiver):
         except Exception as e:
             logging.debug(e)
             pass
+
         self.transport.loseConnection()
 
 class CommandFactory(Factory):
@@ -125,12 +130,9 @@ class CommandFactory(Factory):
 
 class Metadata(Resource):
 
-    def __init__(self):
+    def __init__(self, settings):
         Resource.__init__(self)
-        my_base = path.dirname(path.realpath(__file__))
-        filename = my_base + "/websso_daemon.json"
-        json_data_file = open(filename, 'r')
-        self.settings = json.load(json_data_file)
+        self.settings = settings
 
     def _prepare_from_twisted_request(self, request):
         return {
@@ -141,6 +143,7 @@ class Metadata(Resource):
         }
 
     def render_GET(self, request):
+        logging.debug("[metadata] GET !")
         request.setHeader(b"content-type", b"text/plain")
         req = self._prepare_from_twisted_request(request)
         auth = OneLogin_Saml2_Auth(req, old_settings=self.settings)
@@ -166,6 +169,7 @@ class Login(Resource):
             return self
 
     def render_GET(self, request):
+        logging.debug("[login] GET !")
         request.setHeader(b"content-type", b"text/plain")
         content = u"no Code\n"
         return content.encode("ascii")
@@ -200,6 +204,7 @@ class loginCode(Resource):
         }
 
     def render_GET(self, request):
+        logging.debug("[loginCode] GET !")
         session = request.getSession()
         s = ISession(session)
         s.nonce = self.nonce
@@ -217,7 +222,7 @@ class loginCode(Resource):
         return content.encode("ascii")
 
     def render_POST(self, request):
-        logging.debug("POST !")
+        logging.debug("[loginCode] POST !")
 
         session = request.getSession()
         s = ISession(session)
@@ -269,10 +274,45 @@ class loginCode(Resource):
 class Server:
 
     def __init__(self):
-        my_base = path.dirname(path.realpath(__file__))
-        filename = my_base + "/websso_daemon.json"
-        json_data_file = open(filename, 'r')
-        self.settings = json.load(json_data_file)
+	try:
+		url = os.environ.get("URL", "http://localhost")
+		if not url.endswith("/"):
+			url += "/";
+	
+        	self.settings = { 
+    			"ports": {
+        			"clients": 80,
+        			"command": 81
+    			},
+    			"url": url,
+    			"strict": False,
+    			"debug": True,
+    			"user_attribute": "urn:oid:0.9.2342.19200300.100.1.1",
+    			"sp": {
+        			"entityId": "%smd" % url,
+        			"assertionConsumerService": {
+            				"url": "%slogin/acs" % url,
+            				"binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        			},
+        			"singleLogoutService": {
+            				"url": "%slogin/sls" % url,
+            				"binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        			},
+        			"NameIDFormat": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+    			},
+			"idp" :  {
+				"entityId": os.environ["IDP_ENTITYID"],
+        			"singleSignOnService": {
+            				"url": os.environ["IDP_LOGON_URL"],
+            				"binding": os.environ["IDP_LOGON_BINDING"],
+        			},
+        			"x509cert": os.environ["IDP_CERTIFICATE"]
+			}
+		}
+	except Exception as e:
+        	logging.debug("Error in settingsa: %s" % str(e))
+
+        logging.debug("settings: %s" % self.settings)
 
         # Client channel
         client = Client(self.settings)
@@ -284,7 +324,7 @@ class Server:
         # WebSSO channel
         root = client
         root.putChild(b'login', Login(client))
-        root.putChild(b'md', Metadata())
+        root.putChild(b'md', Metadata(self.settings))
         self.web = server.Site(root)
 
     def start(self):
@@ -293,3 +333,5 @@ class Server:
         reactor.run()
 
 Server().start()
+
+

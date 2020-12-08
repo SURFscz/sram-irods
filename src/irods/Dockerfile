@@ -58,7 +58,7 @@ RUN cd irods_auth_plugin_pam_interactive && /opt/irods-externals/cmake3.5.2-0/bi
 
 # Install requirements for pam-websso
 RUN yum install -y python python-devel python-pam python-pip
-RUN pip install pyasn1 pyopenssl cryptography==2.2.2 requests
+RUN pip install pyasn1 pyopenssl==19.1.0 cryptography==2.2.2 requests
 
 # Prepare for Sync ldap
 RUN yum -y install openldap-devel

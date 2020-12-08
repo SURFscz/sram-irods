@@ -1,0 +1,10 @@
+FROM python:2
+
+RUN apt-get update
+RUN apt-get install -y libxmlsec1-dev
+
+RUN pip install zope twisted python-saml
+
+EXPOSE 80
+
+WORKDIR /app
